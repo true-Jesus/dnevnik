@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Форма входа/регистрации</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Вход/Регистрация</h2>
+    <form id="loginForm">
+        <input type="text" id="username" placeholder="Имя пользователя">
+        <input type="password" id="password" placeholder="Пароль">
+        <button type="button" onclick="login()">Вход</button>
+    </form>
+    <form id="regForm">
+        <input type="text" id="regUsername" placeholder="Имя пользователя">
+        <input type="password" id="regPassword" placeholder="Пароль">
+        <button type="button" onclick="register()">Регистрация</button>
+    </form>
+</div>
+
+<script>
+    function login() {
+        var username = document.getElementById('username').value;
+        var password = document.getElementById('password').value;
+        // Отправляем данные на /login
+        fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                Username: username,
+                Password: password
+            })
+        })
+            .then(response => {
+                if (response.ok) {
+                    return response.text(); // Получаем текст ответа
+                } else {
+                    // Обработка ошибки входа
+                    return Promise.reject('Ошибка входа:', response.status);
+                }
+            })
+            .then(data => {
+                // Успешный вход
+                // Получаем токен из ответа
+                var token = data; // Обработайте токен, например, извлеките его из ответа
+                setAuthToken(token); // Сохраняем токен в куки
+                window.location.href = '/';
+
+                // window.location.href = '/'; // Перенаправляем на главную
+            })
+            .catch(error => {
+                // Обработка ошибки входа
+                console.error(error);
+                // Отобразите сообщение об ошибке пользователю
+            });
+    }
+
+    function register() {
+        var username = document.getElementById('regUsername').value;
+        var password = document.getElementById('regPassword').value;
+        // Отправляем данные на /reg
+        fetch('/reg', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                Username: username,
+                Password: password
+            })
+        })
+            .then(response => {
+                if (response.ok) {
+                    // Успешная регистрация
+                    // Перенаправляем на главную страницу
+                    window.location.href = '/auf';
+                } else {
+                    // Обработка ошибки регистрации
+                    return response.text(); // Получаем текст ответа
+                }
+            })
+            .then(data => {
+                // Отображаем ошибку пользователю
+                alert(data); // Или выведите сообщение другим способом
+            })
+            .catch(error => {
+                // Обработка ошибки регистрации
+                console.error('Ошибка во время регистрации:', error);
+                // Отобразите сообщение об ошибке пользователю
+            });
+    }
+    function setAuthToken(token) {
+        document.cookie = 'authToken=' + token + '; path=/'; // Установка куки
+    }
+
+
+</script>
+</body>
+</html>
