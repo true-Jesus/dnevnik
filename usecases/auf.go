@@ -76,7 +76,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			}
 		}
 		if tokenString == "" {
-			http.Error(w, "Необходимо войти в систему", http.StatusUnauthorized)
+			http.Redirect(w, r, "/auf", http.StatusFound)
 			return
 		}
 
