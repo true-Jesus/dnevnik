@@ -12,12 +12,12 @@ import (
 )
 
 type UseCases struct {
-	aufUC  *usecases.AufUseCase
-	DickUc *usecases.DickUseCase
+	aufUC   *usecases.AufUseCase
+	GradeUc *usecases.GradeUseCase
 }
 
-func NewUseCases(aufUC *usecases.AufUseCase, dickUC *usecases.DickUseCase) *UseCases {
-	return &UseCases{aufUC: aufUC, DickUc: dickUC}
+func NewUseCases(aufUC *usecases.AufUseCase, dickUC *usecases.GradeUseCase) *UseCases {
+	return &UseCases{aufUC: aufUC, GradeUc: dickUC}
 }
 
 type Handlers struct {
@@ -44,6 +44,10 @@ func NewRouter(h *Handlers) *mux.Router {
 			Route{Name: "login", Method: http.MethodPost, Pattern: "/login", HandlerFunc: h.HandleLogin},
 			Route{Name: "reg", Method: http.MethodPost, Pattern: "/reg", HandlerFunc: h.HandleRegistration},
 			Route{Name: "Homeauf", Method: http.MethodGet, Pattern: "/auf", HandlerFunc: h.Homeauf},
+			Route{Name: "t/classes", Method: http.MethodGet, Pattern: "/t/classes", HandlerFunc: h.handleClasses, MiddlewareAuf: usecases.AuthMiddleware},
+			Route{Name: "t/sub", Method: http.MethodGet, Pattern: "/t/sub", HandlerFunc: h.handleSubjects, MiddlewareAuf: usecases.AuthMiddleware},
+			Route{Name: "Gr", Method: http.MethodGet, Pattern: "/Gr", HandlerFunc: h.HomeGr, MiddlewareAuf: usecases.AuthMiddleware},
+			Route{Name: "t/stu", Method: http.MethodGet, Pattern: "/t/stu", HandlerFunc: h.handleStudents, MiddlewareAuf: usecases.AuthMiddleware},
 		}
 	)
 	router := mux.NewRouter().StrictSlash(true)
@@ -146,4 +150,80 @@ func (h *Handlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &cookie)
 	fmt.Fprintf(w, token)
+}
+
+func (h *Handlers) handleClasses(w http.ResponseWriter, r *http.Request) {
+	subjectName := r.URL.Query().Get("subject")
+	if subjectName == "" {
+		http.Error(w, "Название предмета обязательно", http.StatusBadRequest)
+		return
+	}
+
+	data, err := h.useCases.GradeUc.GetClasses(subjectName)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка получения данных: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	dataJs, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка js маршал: %v", err), http.StatusInternalServerError)
+		return
+	}
+	w.Write(dataJs) //tmpl, err := template.ParseFiles("templates/subject.html")
+
+}
+
+func (h *Handlers) handleSubjects(w http.ResponseWriter, r *http.Request) {
+	userName := r.URL.Query().Get("user")
+	userName = "Карлик"
+	if userName == "" {
+		http.Error(w, "Название предмета обязательно", http.StatusBadRequest)
+		return
+	}
+
+	data, err := h.useCases.GradeUc.GetSubjects(userName)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка получения данных: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	dataJs, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка js маршал: %v", err), http.StatusInternalServerError)
+		return
+	}
+	w.Write(dataJs)
+}
+
+func (h *Handlers) HomeGr(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	htmlFile := "templates/subject.html"
+	html, err := ioutil.ReadFile(htmlFile)
+	if err != nil {
+		log.Fatalf("Ошибка чтения файла: %v", err)
+	}
+
+	w.Write([]byte(html))
+}
+func (h *Handlers) handleStudents(w http.ResponseWriter, r *http.Request) {
+
+	className := r.URL.Query().Get("class") //TODO надо порешать хуй знает какой ключ
+	if className == "" {
+		http.Error(w, "название класса обязательно", http.StatusBadRequest)
+		return
+	}
+
+	data, err := h.useCases.GradeUc.GetStudents(className)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка получения данных: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	dataJs, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка js маршал: %v", err), http.StatusInternalServerError)
+		return
+	}
+	w.Write(dataJs) //tmpl, err := template.ParseFiles("templates/subject.html")
 }

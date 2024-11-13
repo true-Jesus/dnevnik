@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Школьные оценки</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f4f4f4;
+      margin: 0;
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    .select-box {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    label {
+      font-weight: bold;
+    }
+
+    select {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #ccc;
+    }
+
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border: 1px solid #ccc;
+    }
+
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="select-box">
+    <label for="subject-select">Предмет:</label>
+    <select id="subject-select">
+      <!-- Предметы будут загружены сюда -->
+    </select>
+  </div>
+
+  <div class="select-box">
+    <label for="class-select">Класс:</label>
+    <select id="class-select" disabled>
+      <!-- Классы будут загружены сюда -->
+    </select>
+  </div>
+</div>
+
+<table>
+  <thead>
+  <tr>
+    <th>Имя</th>
+    <th>Фамилия</th>
+    <th>Оценка</th>
+  </tr>
+  </thead>
+  <tbody>
+  <!-- Данные будут загружены сюда -->
+  </tbody>
+</table>
+
+<script>
+  const subjectSelect = document.getElementById('subject-select');
+  const classSelect = document.getElementById('class-select');
+  const tableBody = document.querySelector('table tbody');
+
+  function populateSubjects(subjects) {
+    subjectSelect.innerHTML = ''; // Clear previous options
+    const option = document.createElement('option');
+    option.value = "";
+    option.text = "";
+    subjectSelect.appendChild(option)
+    subjects.forEach(subject => {
+      const option = document.createElement('option');
+      option.value = subject.name;
+      option.text = subject.name;
+      subjectSelect.appendChild(option);
+    });
+  }
+
+  function populateClasses(classes) {
+    classSelect.innerHTML = ''; // Clear previous options
+    classSelect.disabled = false; // Enable class select
+    const option = document.createElement('option');
+    option.value = "";
+    option.text = "";
+    classSelect.appendChild(option)
+    classes.forEach(cls => {
+      const option = document.createElement('option');
+      option.value = cls.name;
+      option.text = cls.name;
+      classSelect.appendChild(option);
+    });
+  }
+
+  function updateStudents() {
+    const selectedSubject = subjectSelect.value;
+    const selectedClass = classSelect.value;
+
+    fetch(`/t/stu?class=${selectedClass}`)
+            .then(response => response.json())
+            .then(grades => {
+              tableBody.innerHTML = ''; // Clear previous data
+
+              grades.forEach(grade => {
+                const row = document.createElement('tr');
+                const nameCell = document.createElement('td');
+                const lastNameCell = document.createElement('td');
+                const gradeCell = document.createElement('td');
+
+                nameCell.textContent = grade.first_name;
+                lastNameCell.textContent = grade.last_name;
+                gradeCell.textContent = grade.grade;
+
+                row.appendChild(nameCell);
+                row.appendChild(lastNameCell);
+                row.appendChild(gradeCell);
+
+                tableBody.appendChild(row);
+              });
+            })
+            .catch(error => {
+              console.error('Error fetching students:', error);
+            });
+  }
+
+  // Fetch subjects on page load
+  fetch('/t/sub')
+          .then(response => response.json())
+          .then(subjects => {
+            populateSubjects(subjects);
+          })
+          .catch(error => {
+            console.error('Error fetching subjects:', error);
+          });
+
+  subjectSelect.addEventListener('change', () => {
+    const selectedSubject = subjectSelect.value;
+    tableBody.innerHTML = ''; // Clear previous data
+    fetch(`/t/classes?subject=${selectedSubject}`)
+            .then(response => response.json())
+            .then(classes => {
+              populateClasses(classes);
+            })
+            .catch(error => {
+              console.error('Error fetching classes:', error);
+            });
+  });
+
+  classSelect.addEventListener('change', updateStudents);
+</script>
+</body>
+</html>
