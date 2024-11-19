@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Календарь</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<script>
+    function createCalendarTable(startDateStr, endDateStr) {
+        const startDate = new Date(startDateStr.split('-').reverse().join('-'));
+        const endDate = new Date(endDateStr.split('-').reverse().join('-'));
+
+        const table = document.createElement('table');
+        const headerRow = table.insertRow();
+
+        let currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+            const cell = headerRow.insertCell();
+            cell.textContent = currentDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        return table;
+    }
+
+    // Получение данных с эндпоинта /t/quart
+    fetch('/t/quart')
+        .then(response => response.json())
+        .then(data => {
+            const startDate = data.start_date.split('T')[0]; // Извлекаем только дату из start_date
+            const endDate = data.end_date.split('T')[0];   // Извлекаем только дату из end_date
+
+            const calendarTable = createCalendarTable(startDate, endDate);
+            document.body.appendChild(calendarTable);
+        })
+        .catch(error => {
+            console.error('Ошибка получения данных:', error);
+        });
+
+</script>
+</body>
+</html>
+
