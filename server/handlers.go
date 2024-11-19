@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type UseCases struct {
@@ -48,6 +49,8 @@ func NewRouter(h *Handlers) *mux.Router {
 			Route{Name: "t/sub", Method: http.MethodGet, Pattern: "/t/sub", HandlerFunc: h.handleSubjects, MiddlewareAuf: usecases.AuthMiddleware},
 			Route{Name: "Gr", Method: http.MethodGet, Pattern: "/Gr", HandlerFunc: h.HomeGr, MiddlewareAuf: usecases.AuthMiddleware},
 			Route{Name: "t/stu", Method: http.MethodGet, Pattern: "/t/stu", HandlerFunc: h.handleStudents, MiddlewareAuf: usecases.AuthMiddleware},
+			Route{Name: "t/quart", Method: http.MethodGet, Pattern: "/t/quart", HandlerFunc: h.handleQuarte},
+			//Route{Name: "t/HomeTest", Method: http.MethodGet, Pattern: "/t/s", HandlerFunc: h.HomeTest},
 		}
 	)
 	router := mux.NewRouter().StrictSlash(true)
@@ -227,3 +230,36 @@ func (h *Handlers) handleStudents(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(dataJs) //tmpl, err := template.ParseFiles("templates/subject.html")
 }
+func (h *Handlers) handleQuarte(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	id = "1"
+	if id == "" {
+		http.Error(w, "номер четверти обязателен", http.StatusBadRequest)
+		return
+	}
+	intId, err := strconv.Atoi(id)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("ошибка конвертации в инт: %v", err), http.StatusBadRequest)
+	}
+	data, err := h.useCases.GradeUc.GetQuarter(intId)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("ошибка полечения данных(GetQuarter): %v", err), http.StatusBadRequest)
+	}
+	dataJs, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка js маршал(handleQuarte): %v", err), http.StatusInternalServerError)
+		return
+	}
+	w.Write(dataJs)
+}
+
+//func (h *Handlers) HomeTest(w http.ResponseWriter, r *http.Request) {
+//	w.Header().Set("Content-Type", "text/html")
+//	htmlFile := "templates/quart.html"
+//	html, err := ioutil.ReadFile(htmlFile)
+//	if err != nil {
+//		log.Fatalf("Ошибка чтения файла: %v", err)
+//	}
+//
+//	w.Write([]byte(html))
+//}

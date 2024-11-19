@@ -3,6 +3,7 @@ package repo
 import (
 	"database/sql"
 	"fmt"
+	"time"
 )
 
 type Repo struct {
@@ -214,4 +215,32 @@ func (r *Repo) GetStudentsByClass(className string) ([]Student, error) {
 	}
 
 	return students, nil
+}
+
+type Quarter struct {
+	ID        int       `json:"id"`
+	StartDate time.Time `json:"start_date"`
+	EndDate   time.Time `json:"end_date"`
+}
+
+func (r *Repo) GetQuarterByID(quart int) (Quarter, error) {
+	var quarter Quarter
+	rows, err := r.db.Query(`
+ SELECT st.start, st.ID, st.end
+FROM quarter st
+WHERE st.ID = $1;`, quart)
+	if err != nil {
+		return Quarter{}, fmt.Errorf("error executing query(GetQuarter): %w", err)
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return Quarter{}, fmt.Errorf("quarter with ID %d not found", quart)
+	}
+
+	if err := rows.Scan(&quarter.StartDate, &quarter.ID, &quarter.EndDate); err != nil {
+		return Quarter{}, fmt.Errorf("error scanning row(GetQuarter): %w", err)
+	}
+	fmt.Println(quarter)
+	return quarter, nil
 }

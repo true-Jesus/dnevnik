@@ -53,3 +53,10 @@ func (g *GradeUseCase) GetStudents(classname string) ([]repo.Student, error) {
 	}
 	return stu, nil
 }
+func (g *GradeUseCase) GetQuarter(id int) (repo.Quarter, error) {
+	quar, err := g.repo.GetQuarterByID(id)
+	if err != nil {
+		return repo.Quarter{}, err
+	}
+	return quar, nil
+}
