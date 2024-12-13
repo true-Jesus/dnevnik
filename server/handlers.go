@@ -9,7 +9,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
+	"time"
 )
 
 type UseCases struct {
@@ -50,7 +52,10 @@ func NewRouter(h *Handlers) *mux.Router {
 			Route{Name: "Gr", Method: http.MethodGet, Pattern: "/Gr", HandlerFunc: h.HomeGr, MiddlewareAuf: usecases.AuthMiddleware},
 			Route{Name: "t/stu", Method: http.MethodGet, Pattern: "/t/stu", HandlerFunc: h.handleStudents, MiddlewareAuf: usecases.AuthMiddleware},
 			Route{Name: "t/quart", Method: http.MethodGet, Pattern: "/t/quart", HandlerFunc: h.handleQuarte},
-			//Route{Name: "t/HomeTest", Method: http.MethodGet, Pattern: "/t/s", HandlerFunc: h.HomeTest},
+			Route{Name: "t/HomeTest", Method: http.MethodGet, Pattern: "/t/s", HandlerFunc: h.TableTest},
+			Route{Name: "t/grades", Method: http.MethodGet, Pattern: "/t/grades", HandlerFunc: h.handleGetGrades},
+			Route{Name: "t/gradesTable", Method: http.MethodGet, Pattern: "/t/gradesTable", HandlerFunc: h.handleGetGradesTable},
+			Route{Name: "/t/updateGrade", Method: http.MethodPost, Pattern: "/t/updateGrade", HandlerFunc: h.handleUpdateGrade},
 		}
 	)
 	router := mux.NewRouter().StrictSlash(true)
@@ -178,8 +183,7 @@ func (h *Handlers) handleClasses(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) handleSubjects(w http.ResponseWriter, r *http.Request) {
-	userName := r.URL.Query().Get("user")
-	userName = "Карлик"
+	userName := r.URL.Query().Get("username")
 	if userName == "" {
 		http.Error(w, "Название предмета обязательно", http.StatusBadRequest)
 		return
@@ -252,14 +256,135 @@ func (h *Handlers) handleQuarte(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(dataJs)
 }
+func (h *Handlers) handleGetGrades(w http.ResponseWriter, r *http.Request) {
+	dateStart := "2023-06-01"
+	dateEnd := "2024-07-01"
+	sub := "Математика"
+	class := "10А"
+	dtStart, err := time.Parse("2006-01-02", dateStart)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	dtEnd, err := time.Parse("2006-01-02", dateEnd)
+	data, err := h.useCases.GradeUc.GetGrades(dtStart, dtEnd, sub, class)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	dataJs, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	w.Write(dataJs)
+}
 
-//func (h *Handlers) HomeTest(w http.ResponseWriter, r *http.Request) {
-//	w.Header().Set("Content-Type", "text/html")
-//	htmlFile := "templates/quart.html"
-//	html, err := ioutil.ReadFile(htmlFile)
-//	if err != nil {
-//		log.Fatalf("Ошибка чтения файла: %v", err)
-//	}
+//	func (h *Handlers) HomeTest(w http.ResponseWriter, r *http.Request) {
+//		w.Header().Set("Content-Type", "text/html")
+//		htmlFile := "templates/quart.html"
+//		html, err := ioutil.ReadFile(htmlFile)
+//		if err != nil {
+//			log.Fatalf("Ошибка чтения файла: %v", err)
+//		}
 //
-//	w.Write([]byte(html))
-//}
+//		w.Write([]byte(html))
+//	}
+
+func (h *Handlers) TableTest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	htmlFile := "templates/testTableGrades.html"
+	html, err := ioutil.ReadFile(htmlFile)
+	if err != nil {
+		log.Fatalf("Ошибка чтения файла: %v", err)
+	}
+
+	w.Write([]byte(html))
+}
+
+func (h *Handlers) handleGetGradesTable(w http.ResponseWriter, r *http.Request) {
+	query, err := url.ParseQuery(r.URL.RawQuery)
+
+	if err != nil {
+		http.Error(w, "Неверный запрос", http.StatusBadRequest)
+		return
+	}
+
+	subject := query.Get("subject")
+	class := query.Get("class")
+	quarterStr := query.Get("quarter")
+
+	// проверка параметров
+	if subject == "" || class == "" || quarterStr == "" {
+		http.Error(w, "Не все параметры указаны", http.StatusBadRequest)
+		return
+	}
+
+	quarter, err := parseInt(quarterStr)
+	if err != nil {
+		http.Error(w, "Неверный формат четверти", http.StatusBadRequest)
+		return
+	}
+	data, err := h.useCases.GradeUc.GetGradesTable(subject, class, quarter)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	// Получение оценок из базы данных
+	//grades, err := getGradesFromDatabase(subject, class, quarter)
+	//if err != nil {
+	//	http.Error(w, fmt.Sprintf("Ошибка при получении оценок: %v", err), http.StatusInternalServerError)
+	//	return
+	//}
+	//
+	//// Отправка JSON-ответа
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
+
+}
+
+// вспомогательная функция для парсинга строки в int
+func parseInt(s string) (int, error) {
+	var i int
+	_, err := fmt.Sscan(s, &i)
+	return i, err
+}
+
+func (h *Handlers) handleUpdateGrade(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	//todo не передается subject
+	var grade struct {
+		StudentID int    `json:"studentId"`
+		Date      string `json:"date"`
+		Grade     int    `json:"grade"`
+		Subject   string `json:"subject"`
+		Time      string `json:"time"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&grade)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	parsedDate, err := time.Parse("2006-01-02", grade.Date)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Преобразование строки времени в time.Time
+	fmt.Println(grade.StudentID, grade.Grade, grade.Subject, parsedDate)
+	err = h.useCases.GradeUc.UpdateGradesBd(grade.StudentID, grade.Grade, grade.Subject, parsedDate)
+	if err != nil {
+		fmt.Println(1, err, 1)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	// TODO: Обновление оценки в базе данных
+	// Пример (замените на ваш код):
+	//db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/database")
+	//if err != nil {
+	//	http.Error(w, err.Error(), http.StatusInternalServerError)
+	//	return
+	//}
+	//
+
+	// ...Ваш код обновления оценки в базе данных...
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Оценка обновлена"))
+}

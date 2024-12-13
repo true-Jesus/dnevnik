@@ -6,53 +6,69 @@
   <title>Школьные оценки</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: 'Arial', sans-serif;
+      background-color: #f4f4f4;
       display: flex;
-      flex-direction: column;
+      justify-content: center;
       align-items: center;
       min-height: 100vh;
-      background-color: #f4f4f4;
       margin: 0;
     }
 
     .container {
       display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 20px;
-      padding: 20px;
+      flex-direction: column;
       background-color: #fff;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      width: 80%; /* Added width for better centering */
+      max-width: 800px; /* Maximum width to prevent overflowing */
+    }
+
+    .select-row {
+      display: flex;
+      gap: 20px;
+      align-items: center;
       margin-bottom: 20px;
     }
 
     .select-box {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      width: 300px;
     }
 
     label {
+      margin-bottom: 5px;
       font-weight: bold;
+      color: #333;
     }
 
     select {
-      padding: 8px;
+      padding: 10px;
       border: 1px solid #ccc;
-      border-radius: 5px;
+      border-radius: 4px;
+      font-size: 16px;
+      width: 100%;
+      box-sizing: border-box;
+      color: #333; /* Darker text color */
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      border: 1px solid #ccc;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
 
     th, td {
-      padding: 8px;
+      border: 1px solid #ddd;
+      padding: 12px;
       text-align: left;
-      border: 1px solid #ccc;
+      font-size: 14px;
+      color: #333;
     }
 
     th {
@@ -60,68 +76,67 @@
       font-weight: bold;
     }
 
-    h1 {
+    td input[type="number"] {
+      width: 60px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
       text-align: center;
-      margin-bottom: 20px;
+      box-sizing: border-box;
+      font-size: 14px;
+      color: #333;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .container {
+        width: 95%;
+      }
+      .select-box {
+        width: 100%;
+      }
+      .select-row {
+        flex-direction: column; /* Stack selects vertically on small screens */
+        gap: 10px;
+      }
     }
   </style>
 </head>
 <body>
 <div class="container">
-  <div class="select-box">
-    <label for="subject-select">Предмет:</label>
-    <select id="subject-select">
-      <!-- Предметы будут загружены сюда -->
-    </select>
+  <div class="select-row">
+    <div class="select-box">
+      <label for="subject-select">Предмет:</label>
+      <select id="subject-select">
+        <!-- Предметы будут загружены сюда -->
+      </select>
+    </div>
+    <div class="select-box">
+      <label for="class-select">Класс:</label>
+      <select id="class-select" disabled>
+        <!-- Классы будут загружены сюда -->
+      </select>
+    </div>
+    <div class="select-box">
+      <label for="quarter-select">Четверть:</label>
+      <select id="quarter-select" disabled>
+        <option value="Выберите четверть">Выберите четверть</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </div>
   </div>
-
-  <div class="select-box">
-    <label for="class-select">Класс:</label>
-    <select id="class-select" disabled>
-      <!-- Классы будут загружены сюда -->
-    </select>
-  </div>
-  <div class="select-box">
-    <label for="quarter-select">Четверть:</label>
-    <select id="quarter-select" disabled>
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
-  </div>
+  <table id="gradesTable"></table>
 </div>
-
-
-
-<table>
-  <thead>
-  <tr>
-    <th>Имя</th>
-    <th>Фамилия</th>
-    <th>Оценка</th>
-  </tr>
-  </thead>
-  <tbody>
-  <!-- Данные будут загружены сюда -->
-  </tbody>
-</table>
-
 <script>
   const subjectSelect = document.getElementById('subject-select');
   const classSelect = document.getElementById('class-select');
-  const tableBody = document.querySelector('table tbody');
   const quarterSelect = document.getElementById('quarter-select');
 
-  function populateQuarters() {
-    quarterSelect.disabled = false; // Enable class select
-  }
   function populateSubjects(subjects) {
-    subjectSelect.innerHTML = ''; // Clear previous options
-    const option = document.createElement('option');
-    option.value = "";
-    option.text = "";
-    subjectSelect.appendChild(option)
+    subjectSelect.innerHTML = '<option value="">Выберите предмет</option>';
     subjects.forEach(subject => {
       const option = document.createElement('option');
       option.value = subject.name;
@@ -131,90 +146,139 @@
   }
 
   function populateClasses(classes) {
-    classSelect.innerHTML = ''; // Clear previous options
-    classSelect.disabled = false; // Enable class select
-    const option = document.createElement('option');
-    option.value = "";
-    option.text = "";
-    classSelect.appendChild(option)
+    classSelect.innerHTML = '<option value="">Выберите класс</option>';
     classes.forEach(cls => {
       const option = document.createElement('option');
       option.value = cls.name;
       option.text = cls.name;
       classSelect.appendChild(option);
     });
+    classSelect.disabled = false;
+    quarterSelect.disabled = false;
   }
 
-  function updateStudents() {
+  function sendGradesRequest() {
+    clearGradesTable();
     const selectedSubject = subjectSelect.value;
     const selectedClass = classSelect.value;
+    const selectedQuarter = quarterSelect.value;
 
-    fetch(`/t/stu?class=${selectedClass}`)
+    if (!selectedSubject || !selectedClass || !selectedQuarter) {
+      alert('Выберите предмет, класс и четверть.');
+      return;
+    }      fetch(`/t/gradesTable?subject=${encodeURIComponent(selectedSubject)}&class=${encodeURIComponent(selectedClass)}&quarter=${selectedQuarter}`)
             .then(response => response.json())
-            .then(grades => {
-              tableBody.innerHTML = ''; // Clear previous data
+            .then(data => {
+              const table = document.getElementById('gradesTable');
+              const studentData = data.students;
+              const gradeData = data.grades;
+              const startDate = new Date(data.dates.StartDate);
+              const endDate = new Date(data.dates.EndDate);
 
-              grades.forEach(grade => {
-                const row = document.createElement('tr');
-                const nameCell = document.createElement('td');
-                const lastNameCell = document.createElement('td');
-                const gradeCell = document.createElement('td');
+              const uniqueDates = [];
+              let currentDate = new Date(startDate);
+              while (currentDate <= endDate) {
+                uniqueDates.push(currentDate.toISOString().slice(0, 10));
+                currentDate.setDate(currentDate.getDate() + 1);
+              }
 
-                nameCell.textContent = grade.first_name;
-                lastNameCell.textContent = grade.last_name;
-                gradeCell.textContent = grade.grade;
+              const headerRow = table.insertRow();
+              headerRow.insertCell().textContent = "ФИО";
+              uniqueDates.forEach(date => {
+                const cell = headerRow.insertCell();
+                cell.textContent = new Date(date).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' });
+              });
 
-                row.appendChild(nameCell);
-                row.appendChild(lastNameCell);
-                row.appendChild(gradeCell);
+              studentData.forEach(student => {
+                const row = table.insertRow();
+                const nameCell = row.insertCell();
+                nameCell.textContent = student.LastName + ' ' + student.FirstName;
 
-                tableBody.appendChild(row);
+                uniqueDates.forEach(date => {
+                  const cell = row.insertCell();
+                  const input = document.createElement('input');
+                  input.type = 'number';
+                  input.min = 1; // Changed to allow 0
+                  input.max = 6;
+                  input.value = gradeData.find(g =>
+                          g.LastName + ' ' + g.Name === student.LastName + ' ' + student.FirstName &&
+                          g.Date.slice(0, 10) === date
+                  )?.Grade || '';
+
+                  input.addEventListener('change', () => {
+                    const grade = parseInt(input.value, 10);
+                    if (isNaN(grade) || grade < 1 || grade > 6) { //Check for <0 now
+                      input.value = '';
+                      alert('Оценка должна быть числом от 0 до 6'); //Updated alert
+                    } else {
+                      const subject = selectedSubject;
+                      const time = new Date();
+                      updateGrade(student.ID, date, grade, subject, time);
+                    }
+                  });
+                  cell.appendChild(input);
+                });
               });
             })
             .catch(error => {
-              console.error('Error fetching students:', error);
+              console.error('Ошибка:', error);
+              alert('Ошибка при получении оценок.');
             });
   }
 
-  // Fetch subjects on page load
-  fetch('/t/sub')
+  // Функция для отправки обновленной оценки на сервер
+  async function updateGrade(studentId, date, grade, subject) {
+    if (isNaN(grade) || grade < 1 || grade > 6) {
+      alert('Оценка должна быть числом от 1 до 6');
+      return;
+    }
+    try {
+      const response = await fetch('/t/updateGrade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, date, grade, subject })
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      console.log('Оценка успешно обновлена!');
+      //sendGradesRequest(); // Optional: refresh table after update
+    } catch (error) {
+      console.error('Ошибка обновления оценки:', error);
+      alert('Ошибка обновления оценки!');
+    }
+  }
+  function clearGradesTable() {
+    const table = document.getElementById('gradesTable');
+    table.innerHTML = ''; // Очищаем содержимое таблицы
+  }
+  subjectSelect.addEventListener('change', sendGradesRequest);
+  classSelect.addEventListener('change', sendGradesRequest);
+  quarterSelect.addEventListener('change', sendGradesRequest);
+  let userValue = getCookie("user");
+  fetch(`/t/sub?username=${userValue}`)
           .then(response => response.json())
-          .then(subjects => {
-            populateSubjects(subjects);
-          })
-          .catch(error => {
-            console.error('Error fetching subjects:', error);
-          });
+          .then(subjects => populateSubjects(subjects))
+          .catch(error => console.error('Error fetching subjects:', error));
 
   subjectSelect.addEventListener('change', () => {
-    const selectedSubject = subjectSelect.value;
-    tableBody.innerHTML = ''; // Clear previous data
-    fetch(`/t/classes?subject=${selectedSubject}`)
+    fetch(`/t/classes?subject=${encodeURIComponent(subjectSelect.value)}`)
             .then(response => response.json())
-            .then(classes => {
-              populateClasses(classes);
-            })
-            .catch(error => {
-              console.error('Error fetching classes:', error);
-            });
+            .then(classes => populateClasses(classes))
+            .catch(error => console.error('Error fetching classes:', error));
   });
-  classSelect.addEventListener('change', () => {
-    populateQuarters()
-    updateStudents()
-  });
-  // quarterSelect.addEventListener('change', () => {
-  //   const id = quarterSelect.value;
-  //   // tableBody.innerHTML = ''; // Clear previous data
-  //   fetch(`/t/quart?id=${id}`) // Передаем ID класса в запрос
-  //           .then(response => response.json())
-  //           .then(quarters => {
-  //             populateQuarters(quarters);
-  //           })
-  //           .catch(error => {
-  //             console.error('Error fetching quarters:', error);
-  //           });
-  // });
+  function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+      if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+  }
 
+  quarterSelect.addEventListener('change', sendGradesRequest);
 </script>
 </body>
 </html>

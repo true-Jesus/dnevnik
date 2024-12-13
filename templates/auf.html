@@ -94,6 +94,7 @@
                 // Получаем токен из ответа
                 var token = data; // Обработайте токен, например, извлеките его из ответа
                 setAuthToken(token); // Сохраняем токен в куки
+                setCookie("user", username, 30);
                 window.location.href = '/';
 
                 // window.location.href = '/'; // Перенаправляем на главную
@@ -140,8 +141,18 @@
             });
     }
     function setAuthToken(token) {
-        document.cookie = 'authToken=' + token + '; path=/'; // Установка куки
+        document.cookie = 'authToken=' + token + '; path=/'; // Установка кукиъ
     }
+
+    function setCookie(name, value, days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        const expires = "; expires=" + date.toUTCString();
+        document.cookie = name + "=" + value + expires + "; path=/";
+    }
+
+
+
 
 
 </script>
