@@ -1,6 +1,9 @@
 package usecases
 
-import "dnevnik/repo"
+import (
+	"dnevnik/repo"
+	"time"
+)
 
 func NewGradeUseCase(repo *repo.Repo) *GradeUseCase {
 	return &GradeUseCase{repo: repo}
@@ -59,4 +62,58 @@ func (g *GradeUseCase) GetQuarter(id int) (repo.Quarter, error) {
 		return repo.Quarter{}, err
 	}
 	return quar, nil
+}
+func (g *GradeUseCase) GetGrades(dateStart, dateEnd time.Time, sub string, class string) ([]repo.Grade, error) {
+	grades, err := g.repo.GetGrades(dateStart, dateEnd, class, sub)
+	if err != nil {
+		return nil, err
+	}
+	return grades, nil
+}
+
+type DateRange struct {
+	StartDate time.Time
+	EndDate   time.Time
+}
+type Data struct {
+	Students []repo.Student `json:"students"`
+	Grades   []repo.Grade   `json:"grades"`
+	Dates    DateRange      `json:"dates"`
+}
+
+func (g *GradeUseCase) GetGradesTable(subject, className string, quarter int) (*Data, error) {
+	students, err := g.repo.GetStudentsByClass(className)
+	if err != nil {
+		return nil, err
+	}
+	date, err := g.repo.GetQuarterByID(quarter)
+	if err != nil {
+		return nil, err
+	}
+	dates := DateRange{date.StartDate, date.EndDate}
+	grades, err := g.repo.GetGrades(dates.StartDate, dates.EndDate, subject, className)
+	if err != nil {
+		return nil, err
+	}
+
+	data := Data{students, grades, dates}
+
+	return &data, nil
+
+}
+
+type Grade struct {
+	StudentID int       `json:"StudentID"`
+	Date      time.Time `json:"Date"`
+	Grade     int       `json:"Grade"`
+	Subject   string    `json:"Subject"`
+	Time      time.Time `json:"Time"`
+}
+
+func (g *GradeUseCase) UpdateGradesBd(studentId, grade int, subject string, date time.Time) error {
+	err := g.repo.UpdateGrades(studentId, subject, date, grade)
+	if err != nil {
+		return err
+	}
+	return nil
 }
