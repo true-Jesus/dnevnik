@@ -117,3 +117,48 @@ func (g *GradeUseCase) UpdateGradesBd(studentId, grade int, subject string, date
 	}
 	return nil
 }
+func (g *GradeUseCase) GetAvarage(class, subject string, quart int) ([]repo.StudentGradeAvarage, error) {
+	date, err := g.repo.GetQuarterByID(quart)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := g.repo.GetАverageGrades(class, subject, date.StartDate, date.EndDate)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+
+}
+func (g *GradeUseCase) GetSkip(class, subject string, quart int) ([]repo.StudentGradeCount, error) {
+	date, err := g.repo.GetQuarterByID(quart)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := g.repo.GetCallSkip(class, subject, date.StartDate, date.EndDate)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+func (g *GradeUseCase) UpdGradeQuart(subject string, student, quart, grade int) error {
+
+	err := g.repo.UpdGradeQuart(subject, student, quart, grade)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (g *GradeUseCase) GetGradeQuart(class, subject string, quart int) ([]struct {
+	StudentID int
+	FirstName string
+	LastName  string
+	Grade     int
+}, error) {
+	res, err := g.repo.UpdGetGradeQuart(class, subject, quart)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}

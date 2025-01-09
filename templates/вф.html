@@ -5,116 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Школьные оценки</title>
   <style>
-    body {
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      background-color: #f4f4f4;
-      margin: 0;
-    }
-
-    .container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 20px;
-      padding: 20px;
-      background-color: #fff;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      margin-bottom: 20px;
-    }
-
-    .select-box {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    label {
-      font-weight: bold;
-    }
-
-    select {
-      padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      border: 1px solid #ccc;
-    }
-
-    th, td {
-      padding: 8px;
-      text-align: left;
-      border: 1px solid #ccc;
-    }
-
-    th {
-      background-color: #f2f2f2;
-      font-weight: bold;
-    }
-
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
   </style>
 </head>
 <body>
 <div class="container">
-  <div class="select-box">
-    <label for="subject-select">Предмет:</label>
-    <select id="subject-select">
-      <!-- Предметы будут загружены сюда -->
-    </select>
+  <div class="select-row">
+    <div class="select-box">
+      <label for="subject-select">Предмет:</label>
+      <select id="subject-select">
+        <!-- Предметы будут загружены сюда -->
+      </select>
+    </div>
+    <div class="select-box">
+      <label for="class-select">Класс:</label>
+      <select id="class-select" disabled>
+        <!-- Классы будут загружены сюда -->
+      </select>
+    </div>
+    <div class="select-box">
+      <label for="quarter-select">Четверть:</label>
+      <select id="quarter-select" disabled>
+        <option value="Выберите четверть">Выберите четверть</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </div>
   </div>
-
-  <div class="select-box">
-    <label for="class-select">Класс:</label>
-    <select id="class-select" disabled>
-      <!-- Классы будут загружены сюда -->
-    </select>
-  </div>
-
-  <div class="select-box">
-    <label for="quarter-select">Четверть:</label>
-    <select id="quarter-select" disabled>
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
-  </div>
+  <table id="gradesTable"></table>
 </div>
-
-<table id="studentTable">
-  <thead>
-  <tr>
-    <th>ФИО</th>
-    <!-- Даты будут добавлены динамически -->
-  </tr>
-  </thead>
-  <tbody id="tableBody"></tbody>
-</table>
-
 <script>
   const subjectSelect = document.getElementById('subject-select');
   const classSelect = document.getElementById('class-select');
   const quarterSelect = document.getElementById('quarter-select');
-  const tableBody = document.getElementById('tableBody');
 
   function populateSubjects(subjects) {
-    subjectSelect.innerHTML = ''; // Clear previous options
-    const option = document.createElement('option');
-    option.value = "";
-    option.text = "";
-    subjectSelect.appendChild(option);
+    subjectSelect.innerHTML = '<option value="">Выберите предмет</option>';
     subjects.forEach(subject => {
       const option = document.createElement('option');
       option.value = subject.name;
@@ -124,132 +51,50 @@
   }
 
   function populateClasses(classes) {
-    classSelect.innerHTML = ''; // Clear previous options
-    classSelect.disabled = false; // Enable class select
-    const option = document.createElement('option');
-    option.value = "";
-    option.text = "";
-    classSelect.appendChild(option);
+    classSelect.innerHTML = '<option value="">Выберите класс</option>';
     classes.forEach(cls => {
       const option = document.createElement('option');
       option.value = cls.name;
       option.text = cls.name;
       classSelect.appendChild(option);
     });
-  }
-  function populateQuartes(subjects) {
-    subjectSelect.innerHTML = ''; // Clear previous options
-    const option = document.createElement('option');
-    option.value = "";
-    option.text = "";
-    subjectSelect.appendChild(option);
-    subjects.forEach(subject => {
-      const option = document.createElement('option');
-      option.value = subject.name;
-      option.text = subject.name;
-      subjectSelect.appendChild(option);
-    });
+    classSelect.disabled = false;
+    quarterSelect.disabled = false;
   }
 
-  function updateStudents() {
-    const selectedClass = classSelect.value;
-    quarterSelect.disabled = false; // Enable quarter select
 
-    // Fetch dates for the selected quarter
-    fetch(`/t/quart?quarter=${quarterSelect.value}`)
-            .then(response => response.json())
-            .then(quarters => {
-              fetch(`/t/stu?class=${selectedClass}`)
-                      .then(response => response.json())
-                      .then(students => {
-                        populateTable(students, quarters);
-                      })
-                      .catch(error => {
-                        console.error('Error fetching students:', error);
-                      });
-            })
-            .catch(error => {
-              console.error('Error fetching quarters:', error);
-            });
-  }
-
-  function populateTable(students, quarters) {
-    tableBody.innerHTML = ''; // Clear previous data
-
-    // Add dates as table headers
-    const headerRow = document.createElement('tr');
-    const fioCell = document.createElement('th');
-    fioCell.textContent = 'ФИО';
-    headerRow.appendChild(fioCell);
-    quarters.forEach(quarter => {
-      const dateCell = document.createElement('th');
-      dateCell.textContent = new Date(quarter.start_date).toLocaleDateString();
-      headerRow.appendChild(dateCell);
-    });
-    tableBody.appendChild(headerRow);
-
-  // Add student rows
-    students.forEach(student => {
-      const row = document.createElement('tr');
-      const nameCell = document.createElement('td');
-      nameCell.textContent = `${student.last_name} ${student.first_name}`;
-      row.appendChild(nameCell);
-      // Add cells for each quarter
-      quarters.forEach(() => {
-        const gradeCell = document.createElement('td');
-        // Placeholder for grade
-        gradeCell.textContent = '...';
-        row.appendChild(gradeCell);
-      });
-      tableBody.appendChild(row);
-    });
-  }
-
-  // Fetch subjects on page load
-  fetch('/t/sub')
-          .then(response => response.json())
-          .then(subjects => {
-            populateSubjects(subjects);
-          })
-          .catch(error => {
-            console.error('Error fetching subjects:', error);
-          });
 
   subjectSelect.addEventListener('change', () => {
-    const selectedSubject = subjectSelect.value;
-    tableBody.innerHTML = ''; // Clear previous data
-    fetch(`/t/classes?subject=${selectedSubject}`)
+    fetch(`/t/classes?subject=${encodeURIComponent(subjectSelect.value)}`)
             .then(response => response.json())
-            .then(classes => {
-              populateClasses(classes);
-            })
-            .catch(error => {
-              console.error('Error fetching classes:', error);
-            });
+            .then(classes => populateClasses(classes))
+            .catch(error => console.error('Error fetching classes:', error));
   });
+  function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+      if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+  }
+  function fetchSubjects() {
+    let userValue = getCookie("user");
+    if (userValue) { // проверка на null
+      fetch(`/t/sub?username=${userValue}`)
+              .then(response => response.json())
+              .then(subjects => populateSubjects(subjects))
+              .catch(error => console.error('Error fetching subjects:', error));
+    } else {
+      console.error("Cookie 'user' не найден.");
+    }
+  }
+  document.addEventListener('DOMContentLoaded', fetchSubjects); // Вызов после полной загрузки DOM
 
-  classSelect.addEventListener('change', updateStudents);
 
-  quarterSelect.addEventListener('change', () => {
-    const selectedClass = classSelect.value;
-    const selectedQuarter = quarterSelect.value;
-    // Fetch dates for the selected quarter
-    fetch(`/t/quart?quarter=${selectedQuarter}`)
-            .then(response => response.json())
-            .then(quarters => {
-              fetch(`/t/stu?class=${selectedClass}`)
-                      .then(response => response.json())
-                      .then(students => {
-                        populateTable(students, quarters);
-                      })
-                      .catch(error => {
-                        console.error('Error fetching students:', error);
-                      });
-            })
-            .catch(error => {
-              console.error('Error fetching quarters:', error);
-            });
-  });
+
 </script>
 </body>
 </html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Школьные оценки</title>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+
+    #container {
+      display: flex;
+      flex-direction: column;
+      width: 80%;
+      margin: 20px auto;
+    }
+
+    label {
+      margin-bottom: 5px;
+      display: block;
+    }
+
+    select {
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+    .grade-select {
+      width: 60px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      text-align: center;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="select-row">
+    <div class="select-box">
+      <label for="subject-select">Предмет:</label>
+      <select id="subject-select">
+        <!-- Предметы будут загружены сюда -->
+      </select>
+    </div>
+    <div class="select-box">
+      <label for="class-select">Класс:</label>
+      <select id="class-select" disabled>
+        <!-- Классы будут загружены сюда -->
+      </select>
+    </div>
+    <div class="select-box">
+      <label for="quarter-select">Четверть:</label>
+      <select id="quarter-select" disabled>
+        <option value="">Выберите четверть</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </div>
+  </div>
+  <table id="gradesTable"></table>
+</div>
+
+
+<script>
+  const subjectSelect = document.getElementById('subject-select');
+  const classSelect = document.getElementById('class-select');
+  const quarterSelect = document.getElementById('quarter-select');
+  const gradesTable = document.getElementById('gradesTable');
+
+  function populateSubjects(subjects) {
+    subjectSelect.innerHTML = '<option value="">Выберите предмет</option>';
+    subjects.forEach(subject => {
+      const option = document.createElement('option');
+      option.value = subject.name; // Используем name в качестве value
+      option.text = subject.name;
+      subjectSelect.appendChild(option);
+    });
+  }
+
+  function populateClasses(classes) {
+    classSelect.innerHTML = '<option value="">Выберите класс</option>';
+    classes.forEach(cls => {
+      const option = document.createElement('option');
+      option.value = cls.name;
+      option.text = cls.name;
+      classSelect.appendChild(option);
+    });
+    classSelect.disabled = false;
+    quarterSelect.disabled = false;
+  }
+
+  subjectSelect.addEventListener('change', () => {
+    const subject = subjectSelect.value;
+    if (subject) { // Проверка на пустое значение
+      fetch(`/t/classes?subject=${encodeURIComponent(subject)}`)
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+              })
+              .then(classes => populateClasses(classes))
+              .catch(error => console.error('Error fetching classes:', error));
+      gradesTable.innerHTML = '';
+    } else {
+      classSelect.innerHTML = '<option value="">Выберите класс</option>';
+      classSelect.disabled = true;
+      quarterSelect.disabled = true;
+      gradesTable.innerHTML = '';
+    }
+  });
+
+  function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+      if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+  }
+
+  function fetchSubjects() {
+    const userValue = getCookie("user");
+    if (userValue) {
+      fetch(`/t/sub?username=${encodeURIComponent(userValue)}`) // encodeURIComponent здесь тоже важен
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+              })
+              .then(subjects => populateSubjects(subjects))
+              .catch(error => console.error('Error fetching subjects:', error));
+    } else {
+      console.error("Cookie 'user' не найден.");
+    }
+  }
+
+  function createGradeSelect(initialValue) {
+    const select = document.createElement('select');
+    select.classList.add('grade-select');
+    const options = ['1', '2', '3', '4', '5', 'Н'];
+    options.forEach(option => {
+      const optionElement = document.createElement('option');
+      optionElement.value = option;
+      optionElement.text = option;
+      select.appendChild(optionElement);
+    });
+    select.value = initialValue !== null ? (initialValue === 6 ? 'Н' : String(initialValue)) : '';
+    return select;
+  }
+
+  function displayTable(students, averageGrades, skips, quartGrades) {
+    gradesTable.innerHTML = '';
+    const headerRow = gradesTable.insertRow();
+    headerRow.innerHTML = '<th>ФИО</th><th>Средний балл</th><th>Количество пропусков</th><th>Оценка</th>';
+
+    const selectedSubject = subjectSelect.value;
+    const selectedQuarter = quarterSelect.value;
+
+    students.forEach(student => {
+      const gradeInfo = averageGrades.find(grade => grade.id_student === student.ID);
+      const skipInfo = skips.find(skip => skip.FirstName === student.FirstName && skip.LastName === student.LastName);
+      const quartGradeInfo = quartGrades.find(grade => grade.StudentID === student.ID);
+      const row = gradesTable.insertRow();
+      const fullName = `${student.LastName} ${student.FirstName}`;
+      const averageGrade = gradeInfo ? gradeInfo.avarage_grade : 'Нет оценок';
+      const countSkip = skipInfo ? skipInfo.CountSkip : 0;
+      const initialQuartGrade = quartGradeInfo ? quartGradeInfo.Grade : null;
+
+      const gradeCell = row.insertCell();
+      gradeCell.textContent = fullName;
+
+      const averageGradeCell = row.insertCell();
+      averageGradeCell.textContent = averageGrade;
+      if (averageGrade !== 'Нет оценок') {
+        const gradeNum = parseFloat(averageGrade);
+        if (gradeNum < 3) {
+          averageGradeCell.style.color = 'red';
+        } else if (gradeNum < 4) {
+          averageGradeCell.style.color = 'orange';
+        } else if (gradeNum < 5) {
+          averageGradeCell.style.color = 'green';
+        } else {
+          averageGradeCell.style.color = 'darkgreen';
+        }
+      }
+      row.insertCell().textContent = countSkip;
+
+
+      const gradeSelectCell = row.insertCell();
+      const gradeSelect = createGradeSelect(initialQuartGrade);
+
+      gradeSelect.addEventListener('change', async () => {
+        const grade = gradeSelect.value;
+        if (grade) {
+          const gradeNumber = grade === 'Н' ? 6 : parseInt(grade);
+          try {
+            const response = await fetch('/t/updGradeQuart', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                studentId: student.ID,
+                subjectId: selectedSubject,  // Теперь передаём название предмета
+                grade: gradeNumber,
+                quarter: selectedQuarter,
+              }),
+            });
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            console.log(`Оценка для студента ${student.ID} обновлена на ${gradeNumber} для ${selectedQuarter} четверти.`);
+            sendGradesRequest()
+          } catch (error) {
+            console.error('Ошибка отправки оценки:', error);
+            alert('Ошибка отправки оценки!');
+          }
+        }
+      });
+      gradeSelectCell.appendChild(gradeSelect)
+
+
+    });
+  }
+
+
+  function sendGradesRequest() {
+    const selectedClass = classSelect.value;
+    const selectedSubject = subjectSelect.value;
+    const selectedQuarter = quarterSelect.value;
+    if (selectedClass && selectedSubject && selectedQuarter) {
+      Promise.all([
+        fetch(`/t/stu?class=${encodeURIComponent(selectedClass)}`).then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        }),
+        fetch(`/t/getAverage?class=${encodeURIComponent(selectedClass)}&subject=${encodeURIComponent(selectedSubject)}&quarter=${encodeURIComponent(selectedQuarter)}`).then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        }),
+        fetch(`/GetSkip?class=${encodeURIComponent(selectedClass)}&subject=${encodeURIComponent(selectedSubject)}&quarter=${encodeURIComponent(selectedQuarter)}`, {
+          redirect: 'follow'
+        }).then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        }),
+        fetch(`/t/GetGradeQuart`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            class: selectedClass,
+            subject: selectedSubject,
+            quarter: selectedQuarter,
+          }),
+        }).then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+      ])
+              .then(([students, averageGrades, skips, quartGrades]) => displayTable(students, averageGrades, skips, quartGrades))
+              .catch(error => console.error('Error fetching data:', error));
+    } else {
+      gradesTable.innerHTML = '<tr><td>Выберите все параметры</td></tr>';
+    }
+  }
+
+  quarterSelect.addEventListener('change', sendGradesRequest);
+
+  document.addEventListener('DOMContentLoaded', fetchSubjects);
+</script>
+</body>
+</html>
