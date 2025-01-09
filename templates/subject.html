@@ -16,14 +16,14 @@
     }
 
     .container {
-      display: flex;
-      flex-direction: column;
-      background-color: #fff;
+      background-color: #f9f9f9;
+      border: 1px solid #ddd;
       padding: 30px;
       border-radius: 8px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      width: 80%; /* Added width for better centering */
-      max-width: 800px; /* Maximum width to prevent overflowing */
+      width: 90%;
+      max-width: 1200px;
+      overflow-x: auto;
     }
 
     .select-row {
@@ -34,9 +34,7 @@
     }
 
     .select-box {
-      display: flex;
       flex-direction: column;
-      width: 300px;
     }
 
     label {
@@ -52,15 +50,19 @@
       font-size: 16px;
       width: 100%;
       box-sizing: border-box;
-      color: #333; /* Darker text color */
+      color: #333;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
+      border-spacing: 0;
       border-radius: 8px;
-      overflow: hidden;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    thead {
+      background-color: #e9ecef;
     }
 
     th, td {
@@ -72,11 +74,16 @@
     }
 
     th {
-      background-color: #f2f2f2;
       font-weight: bold;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      left: 0;
+      background-color: #e9ecef;
     }
 
-    td input[type="number"] {
+    td input[type="text"],
+    td select {
       width: 60px;
       padding: 5px;
       border: 1px solid #ccc;
@@ -85,6 +92,34 @@
       box-sizing: border-box;
       font-size: 14px;
       color: #333;
+    }
+
+    .grade-select {
+      width: 60px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      text-align: center;
+      box-sizing: border-box;
+      font-size: 14px;
+      color: #333;
+    }
+
+
+    /* Fix first column */
+    table td:nth-child(2),
+    table th:nth-child(2) { /* Изменено на nth-child(2) для ФИО */
+      position: sticky;
+      left: 80px;
+      z-index: 2;
+      background-color: #f3eaea;
+    }
+    table td:first-child,
+    table th:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      background-color: #ffffff;
     }
 
     /* Responsive adjustments */
@@ -96,9 +131,29 @@
         width: 100%;
       }
       .select-row {
-        flex-direction: column; /* Stack selects vertically on small screens */
+        flex-direction: column;
         gap: 10px;
       }
+    }
+
+    /* Подсветка оценок */
+    .grade-2 {
+      background-color: #f44336; /* Красный */
+    }
+
+    .grade-3 {
+      background-color: #ff9800; /* Оранжевый */
+    }
+
+    .grade-4 {
+      background-color: #8bc34a; /* Светло-зеленый */
+    }
+
+    .grade-5 {
+      background-color: #4caf50; /* Зеленый */
+    }
+    .today {
+      background-color: #ffebee !important; /* Light Red */
     }
   </style>
 </head>
@@ -134,7 +189,6 @@
   const subjectSelect = document.getElementById('subject-select');
   const classSelect = document.getElementById('class-select');
   const quarterSelect = document.getElementById('quarter-select');
-
   function populateSubjects(subjects) {
     subjectSelect.innerHTML = '<option value="">Выберите предмет</option>';
     subjects.forEach(subject => {
@@ -157,6 +211,20 @@
     quarterSelect.disabled = false;
   }
 
+  function createGradeSelect(initialValue) {
+    const select = document.createElement('select');
+    select.classList.add('grade-select');
+    const options = ['1', '2', '3', '4', '5', 'Н'];
+    options.forEach(option => {
+      const optionElement = document.createElement('option');
+      optionElement.value = option;
+      optionElement.text = option;
+      select.appendChild(optionElement);
+    });
+    select.value = initialValue || ''; // Set initial value if provided
+    return select;
+  }
+
   function sendGradesRequest() {
     clearGradesTable();
     const selectedSubject = subjectSelect.value;
@@ -164,16 +232,28 @@
     const selectedQuarter = quarterSelect.value;
 
     if (!selectedSubject || !selectedClass || !selectedQuarter) {
-      alert('Выберите предмет, класс и четверть.');
       return;
-    }      fetch(`/t/gradesTable?subject=${encodeURIComponent(selectedSubject)}&class=${encodeURIComponent(selectedClass)}&quarter=${selectedQuarter}`)
-            .then(response => response.json())
-            .then(data => {
+    }
+
+    Promise.all([
+      fetch(`/t/gradesTable?subject=${encodeURIComponent(selectedSubject)}&class=${encodeURIComponent(selectedClass)}&quarter=${selectedQuarter}`),
+      fetch(`/t/getAverage?class=${encodeURIComponent(selectedClass)}&subject=${encodeURIComponent(selectedSubject)}&quarter=${selectedQuarter}`)
+    ])
+            .then(([gradesResponse, averageResponse]) => Promise.all([gradesResponse.json(), averageResponse.json()]))
+            .then(([gradesData, averageData]) => {
               const table = document.getElementById('gradesTable');
-              const studentData = data.students;
-              const gradeData = data.grades;
-              const startDate = new Date(data.dates.StartDate);
-              const endDate = new Date(data.dates.EndDate);
+              const studentData = gradesData.students;
+              const gradeData = gradesData.grades;
+              const startDate = new Date(gradesData.dates.StartDate);
+              const endDate = new Date(gradesData.dates.EndDate);
+              const averageGrades = {}; // Initialize as an empty object
+              const today = new Date().toISOString().slice(0, 10);
+              // Handle the case where averageData is null
+              if (averageData !== null && averageData.length > 0) {
+                averageData.forEach(item => {
+                  averageGrades[item.id_student] = item.avarage_grade;
+                });
+              }
 
               const uniqueDates = [];
               let currentDate = new Date(startDate);
@@ -183,40 +263,72 @@
               }
 
               const headerRow = table.insertRow();
+              headerRow.insertCell().textContent = "   Средний балл   ";
               headerRow.insertCell().textContent = "ФИО";
               uniqueDates.forEach(date => {
                 const cell = headerRow.insertCell();
-                cell.textContent = new Date(date).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' });
+                const dateText = new Date(date).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' });
+                cell.textContent = dateText;
+                if(date === today){
+                  cell.classList.add('today');
+                  // Set focus on today's cell
+                }
               });
 
               studentData.forEach(student => {
                 const row = table.insertRow();
+                const averageCell = row.insertCell();
+                const averageGrade = averageGrades[student.ID] || 0; // Use 0 if no average grade found
+                averageCell.textContent = averageGrade.toFixed(2);
                 const nameCell = row.insertCell();
                 nameCell.textContent = student.LastName + ' ' + student.FirstName;
 
+
                 uniqueDates.forEach(date => {
                   const cell = row.insertCell();
-                  const input = document.createElement('input');
-                  input.type = 'number';
-                  input.min = 1; // Changed to allow 0
-                  input.max = 6;
-                  input.value = gradeData.find(g =>
+                  const gradeSelect = createGradeSelect(gradeData.find(g =>
                           g.LastName + ' ' + g.Name === student.LastName + ' ' + student.FirstName &&
                           g.Date.slice(0, 10) === date
-                  )?.Grade || '';
+                  )?.Grade ? gradeToLetter(gradeData.find(g =>
+                          g.LastName + ' ' + g.Name === student.LastName + ' ' + student.FirstName &&
+                          g.Date.slice(0, 10) === date
+                  )?.Grade) : '');
 
-                  input.addEventListener('change', () => {
-                    const grade = parseInt(input.value, 10);
-                    if (isNaN(grade) || grade < 1 || grade > 6) { //Check for <0 now
-                      input.value = '';
-                      alert('Оценка должна быть числом от 0 до 6'); //Updated alert
-                    } else {
-                      const subject = selectedSubject;
-                      const time = new Date();
-                      updateGrade(student.ID, date, grade, subject, time);
+
+                  if (gradeSelect.value) {
+                    const gradeValue = parseInt(gradeSelect.value, 10);
+                    if(gradeValue>= 2 && gradeValue <=5){
+                      cell.classList.add(`grade-${gradeValue}`);
                     }
+                  }
+
+                  gradeSelect.addEventListener('change', () => {
+                    const gradeLetter = gradeSelect.value;
+                    let gradeNumber;
+
+                    if (gradeLetter === 'Н') {
+                      gradeNumber = 6;
+                    } else if (gradeLetter >= '1' && gradeLetter <= '5') {
+                      gradeNumber = parseInt(gradeLetter, 10);
+                    } else {
+                      gradeNumber = ""; // Handle empty selection
+                    }
+                    const subject = selectedSubject;
+                    const time = new Date();
+                    if(gradeNumber != ""){
+                      updateGrade(student.ID, date, gradeNumber, subject, time);
+                    }
+                    cell.classList.remove('grade-2', 'grade-3', 'grade-4', 'grade-5');
+                    if (gradeSelect.value) {
+                      const gradeValue = parseInt(gradeSelect.value, 10);
+                      if(gradeValue>= 2 && gradeValue <= 5){
+                        cell.classList.add(`grade-${gradeValue}`);
+                      }
+                    }
+
+
                   });
-                  cell.appendChild(input);
+                  cell.appendChild(gradeSelect);
                 });
               });
             })
@@ -226,7 +338,13 @@
             });
   }
 
-  // Функция для отправки обновленной оценки на сервер
+  function gradeToLetter(gradeNumber) {
+    if (gradeNumber === 6) {
+      return "Н";
+    }
+    return gradeNumber;
+  }
+
   async function updateGrade(studentId, date, grade, subject) {
     if (isNaN(grade) || grade < 1 || grade > 6) {
       alert('Оценка должна быть числом от 1 до 6');
@@ -277,7 +395,6 @@
     }
     return null;
   }
-
   quarterSelect.addEventListener('change', sendGradesRequest);
 </script>
 </body>

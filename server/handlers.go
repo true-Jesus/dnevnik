@@ -56,6 +56,11 @@ func NewRouter(h *Handlers) *mux.Router {
 			Route{Name: "t/grades", Method: http.MethodGet, Pattern: "/t/grades", HandlerFunc: h.handleGetGrades},
 			Route{Name: "t/gradesTable", Method: http.MethodGet, Pattern: "/t/gradesTable", HandlerFunc: h.handleGetGradesTable},
 			Route{Name: "/t/updateGrade", Method: http.MethodPost, Pattern: "/t/updateGrade", HandlerFunc: h.handleUpdateGrade},
+			Route{Name: "/t/getAverage", Method: http.MethodGet, Pattern: "/t/getAverage", HandlerFunc: h.handleAverageGrade},
+			Route{Name: "Analitic", Method: http.MethodGet, Pattern: "/Analitic", HandlerFunc: h.HomeAnalitic, MiddlewareAuf: usecases.AuthMiddleware},
+			Route{Name: "GetSkip", Method: http.MethodGet, Pattern: "/GetSkip", HandlerFunc: h.handleGetSkip},
+			Route{Name: "handleUpdGradeQuart", Method: http.MethodPost, Pattern: "/t/updGradeQuart", HandlerFunc: h.handleUpdGradeQuart},
+			Route{Name: "handleGetGradeQuart", Method: http.MethodPost, Pattern: "/t/GetGradeQuart", HandlerFunc: h.handleGetGradeQuart},
 		}
 	)
 	router := mux.NewRouter().StrictSlash(true)
@@ -387,4 +392,140 @@ func (h *Handlers) handleUpdateGrade(w http.ResponseWriter, r *http.Request) {
 	// ...Ваш код обновления оценки в базе данных...
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Оценка обновлена"))
+}
+func (h *Handlers) handleAverageGrade(w http.ResponseWriter, r *http.Request) {
+	query, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	class := query.Get("class")
+	subject := query.Get("subject")
+	quarterStr := query.Get("quarter")
+	quarter, err := parseInt(quarterStr)
+	data, err := h.useCases.GradeUc.GetAvarage(class, subject, quarter)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	dataJs, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(dataJs)
+}
+func (h *Handlers) HomeAnalitic(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	htmlFile := "templates/anali.html"
+	html, err := ioutil.ReadFile(htmlFile)
+	if err != nil {
+		log.Fatalf("Ошибка чтения файла: %v", err)
+	}
+
+	w.Write([]byte(html))
+}
+func (h *Handlers) handleGetSkip(w http.ResponseWriter, r *http.Request) {
+	query, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	class := query.Get("class")
+	subject := query.Get("subject")
+	quarterStr := query.Get("quarter")
+
+	quarter, err := strconv.Atoi(quarterStr)
+	if err != nil {
+		http.Error(w, "Неверный формат четверти", http.StatusBadRequest)
+		return
+	}
+
+	if class == "" || subject == "" || quarterStr == "" {
+		http.Error(w, "Необходимо указать класс, предмет и четверть", http.StatusBadRequest)
+		return
+	}
+
+	data, err := h.useCases.GradeUc.GetSkip(class, subject, quarter)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	dataJs, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(dataJs)
+}
+func (h *Handlers) handleUpdGradeQuart(w http.ResponseWriter, r *http.Request) {
+	var gradeData struct {
+		StudentID int    `json:"studentId"`
+		SubjectId string `json:"subjectId"`
+		Grade     int    `json:"grade"`
+		Quarter   string `json:"quarter"`
+	}
+
+	// Декодируем JSON из тела запроса в структуру gradeData
+	err := json.NewDecoder(r.Body).Decode(&gradeData)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Выводим полученные данные для отладки
+	fmt.Println("Полученные данные:", gradeData)
+	// Декодируем JSON из тела запроса в структуру gradeData
+	quart, err := strconv.Atoi(gradeData.Quarter)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	err = h.useCases.GradeUc.UpdGradeQuart(gradeData.SubjectId, gradeData.StudentID, quart, gradeData.Grade)
+	if err != nil {
+		fmt.Println(1, err, 1)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	w.WriteHeader(http.StatusOK)
+
+}
+func (h *Handlers) handleGetGradeQuart(w http.ResponseWriter, r *http.Request) {
+	var gradeData struct {
+		Class     string `json:"class"`
+		SubjectId string `json:"subject"`
+		Quarter   string `json:"quarter"`
+	}
+
+	// Декодируем JSON из тела запроса в структуру gradeData
+	err := json.NewDecoder(r.Body).Decode(&gradeData)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Выводим полученные данные для отладки
+	fmt.Println("Полученные данные:", gradeData)
+	// Декодируем JSON из тела запроса в структуру gradeData
+	quart, err := strconv.Atoi(gradeData.Quarter)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	data, err := h.useCases.GradeUc.GetGradeQuart(gradeData.Class, gradeData.SubjectId, quart)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	dataJs, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(dataJs)
+
 }

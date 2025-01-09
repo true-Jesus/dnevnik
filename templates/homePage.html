@@ -63,9 +63,10 @@
 </header>
 
 <main>
+  <h1 id="welcome-message" style="text-align: center; margin-bottom: 1rem;"></h1>
   <div class="container">
     <button class="button" onclick="window.location.href = '/Gr'">таблица оценок</button>
-<!--    <button class="button" onclick="window.location.href='assignments.html'">Загрузка заданий</button>-->
+    <button class="button" onclick="window.location.href='/Analitic'">Аналитика</button>
 <!--    <button class="button" onclick="window.location.href='grades.html'">Проставление оценок</button>-->
 <!--    <button class="button" onclick="window.location.href='communication.html'">Общение с учениками</button>-->
 <!--    <button class="button" onclick="window.location.href='parent_communication.html'">Общение с родителями</button>-->
@@ -73,6 +74,7 @@
 <!--    <button class="button" onclick="window.location.href='class_management.html'">Управление классом</button>-->
 <!--    <button class="button" onclick="window.location.href='additional_features.html'">Дополнительные функции</button>-->
 <!--    <button class="button" onclick="window.location.href='analytics.html'">Аналитика</button>-->
+
   </div>
 </main>
 <footer>
@@ -87,9 +89,32 @@
       window.location.href = '/auf'; // Перенаправить на страницу входа
     } else {
       // Пользователь авторизован
-      // ... (возможно, нужно выполнить действия с токеном)
+      displayWelcomeMessage();
     }
   }
+
+  // Функция для получения имени пользователя из куки
+  function getUserNameFromCookie() {
+    const nameEQ = "user=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+      if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+  }
+
+
+  // Функция для отображения приветственного сообщения
+  function displayWelcomeMessage() {
+    const userName = getUserNameFromCookie();
+    if (userName) {
+      const welcomeMessageElement = document.getElementById('welcome-message');
+      welcomeMessageElement.textContent = `Добро пожаловать, ${decodeURIComponent(userName)}!`;
+    }
+  }
+
 
   // Функция для получения токена из куки
   function getCookie(name) {

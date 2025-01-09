@@ -272,11 +272,11 @@ JOIN
 JOIN
   classes c ON s.class_id = c.id
 WHERE
-  c.name = '10А'
-  AND su.name = 'Математика'
-  AND g.date BETWEEN '2022-09-01' AND '2024-12-31'
+  c.name = $1
+  AND su.name = $2
+  AND g.date BETWEEN $3 AND $4
 ORDER BY
-  s.last_name, s.first_name, g.date;`)
+  s.last_name, s.first_name, g.date;`, class, sub, dateStart, dateEnd)
 	fmt.Println(rows)
 	if err != nil {
 		return nil, fmt.Errorf("error executing query(GetGrades): %w", err)
@@ -341,4 +341,198 @@ func (r *Repo) UpdateGrades(studentId int, subject string, date time.Time, grade
 	}
 
 	return tx.Commit()
+}
+
+type StudentGradeAvarage struct {
+	IdStudent    int     `json:"id_student"`
+	Name         string  `json:"first_name"`
+	LastName     string  `json:"last_name"`
+	AvarageGrade float64 `json:"avarage_grade"`
+}
+
+func (r *Repo) GetАverageGrades(class, subject string, start, end time.Time) ([]StudentGradeAvarage, error) {
+	query := `
+  SELECT
+   s.id AS id_ученика,
+   s.first_name AS имя,
+   s.last_name AS фамилия,
+   COALESCE(AVG(g.grade), 0) AS средний_балл
+  FROM
+   students s
+  JOIN
+   classes c ON s.class_id = c.id
+  LEFT JOIN
+   grades g ON s.id = g.student_id
+    AND g.subject_id = (SELECT id FROM subjects WHERE name = $1)
+    AND g.date >= $2
+    AND g.date <= $3
+    AND g.grade <= 5
+  JOIN
+   subjects sub ON g.subject_id = sub.id
+  WHERE
+   c.name = $4
+  GROUP BY
+   s.id,
+   s.first_name,
+   s.last_name
+  ORDER BY
+   s.id; --Added ORDER BY clause for consistent results`
+
+	rows, err := r.db.QueryContext(context.Background(), query, subject, start, end, class)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+	defer rows.Close()
+
+	var results []StudentGradeAvarage
+	for rows.Next() {
+		var result StudentGradeAvarage
+		if err := rows.Scan(&result.IdStudent, &result.Name, &result.LastName, &result.AvarageGrade); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+		results = append(results, result)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	return results, nil
+}
+
+type StudentGradeCount struct {
+	FirstName string
+	LastName  string
+	CountSkip int
+}
+
+func (r *Repo) GetCallSkip(class, subject string, start, end time.Time) ([]StudentGradeCount, error) {
+	query := `
+  SELECT
+   s.first_name,
+   s.last_name,
+   COUNT(g.id) AS count_of_sixes
+  FROM
+   students s
+  JOIN
+   grades g ON s.id = g.student_id
+  JOIN
+   subjects sub ON g.subject_id = sub.id
+  JOIN
+   classes c ON s.class_id = c.id
+  WHERE
+   sub.name = $1
+   AND c.name = $2
+   AND g.grade = 6
+   AND g.date BETWEEN $3 AND $4
+  GROUP BY
+   s.id, s.first_name, s.last_name
+  HAVING
+   COUNT(g.id) > 0;
+ `
+	rows, err := r.db.Query(query, subject, class, start, end)
+
+	if err != nil {
+		return nil, fmt.Errorf("query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var results []StudentGradeCount
+	for rows.Next() {
+		var result StudentGradeCount
+		err = rows.Scan(&result.FirstName, &result.LastName, &result.CountSkip)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+		results = append(results, result)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over rows: %w", err)
+	}
+
+	return results, nil
+}
+func (r *Repo) UpdGradeQuart(subject string, student, quart, grade int) error {
+	now := time.Now()
+	ubId, err := r.db.Query(`SELECT id FROM subjects WHERE name = $1`, subject)
+	if err != nil {
+		return fmt.Errorf("error executing query(UpdateGrades): %w", err)
+	}
+	defer ubId.Close()
+	var subId int
+	if ubId.Next() {
+		if err := ubId.Scan(&subId); err != nil {
+			return fmt.Errorf("error scanning subject ID: %w", err)
+		}
+	} else {
+		return fmt.Errorf("subject '%s' not found", subject)
+	}
+	//  Используем ON CONFLICT DO UPDATE для вставки или обновления
+
+	_, err = r.db.Exec(`
+        INSERT INTO quartgrade (student_id, subject_id, grade, created_at, quartnum) 
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (student_id, subject_id, quartnum) DO UPDATE 
+        SET grade = $3, created_at = $4
+    `, student, subId, grade, now, quart)
+	if err != nil {
+		return fmt.Errorf("ошибка при добавлении/обновлении оценки: %w", err)
+	}
+	return nil
+}
+func (r *Repo) UpdGetGradeQuart(class, subject string, quart int) ([]struct {
+	StudentID int
+	FirstName string
+	LastName  string
+	Grade     int
+}, error) {
+	rows, err := r.db.Query(`
+        SELECT
+            s.id AS student_id,
+            s.first_name,
+            s.last_name,
+            qg.grade
+        FROM
+            students s
+        JOIN
+            classes c ON s.class_id = c.id
+        JOIN
+            quartgrade qg ON s.id = qg.student_id
+  JOIN
+      subjects sub ON qg.subject_id = sub.id
+        WHERE
+            c.name = $1
+            AND sub.name = $2
+            AND qg.quartnum = $3;
+    `, class, subject, quart)
+	if err != nil {
+		return nil, fmt.Errorf("error executing query: %w", err)
+	}
+	defer rows.Close()
+
+	var grades []struct {
+		StudentID int
+		FirstName string
+		LastName  string
+		Grade     int
+	}
+
+	for rows.Next() {
+		var grade struct {
+			StudentID int
+			FirstName string
+			LastName  string
+			Grade     int
+		}
+		if err := rows.Scan(&grade.StudentID, &grade.FirstName, &grade.LastName, &grade.Grade); err != nil {
+			return nil, fmt.Errorf("error scanning row: %w", err)
+		}
+		grades = append(grades, grade)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during iteration: %w", err)
+	}
+	fmt.Println(1, grades)
+	return grades, nil
 }
